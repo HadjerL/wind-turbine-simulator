@@ -3,6 +3,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Papa from 'papaparse';
 import mqtt, { MqttClient } from 'mqtt';
+import { MqttStatusIndicator } from '../csvUploader/mqttStatusIndicator';
+import { FileUploadArea } from '../csvUploader/fileUploadArea';
+import { ValidationErrorDisplay } from '../csvUploader/validationErrorDisplay';
+import { FileInfo } from '../csvUploader/fileInfo';
+import { DataPreviewTable } from '../csvUploader/dataPreviewTable';
+import { SimulatorControls } from '../csvUploader/simulatorControls';
 
 // Define the required columns
 const REQUIRED_COLUMNS = [
@@ -269,158 +275,59 @@ export default function CsvUploader() {
     };
   }, [isPlaying, intervalTime, data.length, nextRow]);
 
-  // Format current row number display
-  const formatRowNumber = () => {
-    return `${currentRowIndex + 1} of ${data.length}`;
-  };
-
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">CSV File Uploader & Simulator</h1>
       
       {/* MQTT Status */}
-      <div className={`mb-4 p-2 rounded text-center ${
-        mqttStatus === 'Connected' ? 'bg-green-100 text-green-800' : 
-        mqttStatus.startsWith('Error') ? 'bg-red-100 text-red-800' : 
-        'bg-yellow-100 text-yellow-800'
-      }`}>
-        MQTT Status: {mqttStatus}
-      </div>
+      <MqttStatusIndicator status={mqttStatus}/>
 
       {/* File Upload Section */}
-      <div 
-        className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+      <FileUploadArea
+        isDragging={isDragging}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-      >
-        <input 
-          type="file" 
-          id="file-upload" 
-          accept=".csv" 
-          onChange={handleFileChange} 
-          className="hidden" 
-        />
-        <label htmlFor="file-upload" className="cursor-pointer block">
-          <div className="flex flex-col items-center justify-center">
-            <svg className="w-12 h-12 mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="mb-2 text-sm text-gray-500">
-              <span className="font-semibold">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-gray-500">CSV files only</p>
-          </div>
-        </label>
-      </div>
+        onFileChange={handleFileChange}
+      />
 
       {/* Validation Error */}
-      {validationError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h3 className="text-lg font-medium text-red-800 mb-2">Validation Error</h3>
-          <p className="text-red-700">{validationError}</p>
-        </div>
-      )}
+      <ValidationErrorDisplay error={validationError}/>
 
       {/* File Info */}
-      {file && !validationError && (
-        <div className="mb-6">
-          <p className="font-medium">Selected file: {file.name}</p>
-          <p className="text-sm text-gray-600">Size: {(file.size / 1024).toFixed(2)} KB</p>
-          <p className="text-sm text-gray-600">Rows: {data.length}</p>
-          <p className="text-sm text-green-600 font-medium mt-2">
-            ✓ All required columns present
-          </p>
-        </div>
-      )}
+      <FileInfo file={file} dataLength={data.length}/>
 
       {/* Simulator Controls */}
+      {/* Loading State */}
       {data.length > 0 && !validationError && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Simulator Controls</h2>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={togglePlay}
-                className={`px-4 py-2 rounded-md ${isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white`}
-              >
-                {isPlaying ? 'Stop' : 'Start'}
-              </button>
-              <button
-                onClick={prevRow}
-                disabled={currentRowIndex === 0 || isPlaying}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                onClick={nextRow}
-                disabled={currentRowIndex >= data.length - 1 || isPlaying}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor="interval-time" className="text-sm font-medium">
-                Interval (ms):
-              </label>
-              <input
-                id="interval-time"
-                type="number"
-                min="100"
-                step="100"
-                value={intervalTime}
-                onChange={(e) => setIntervalTime(Number(e.target.value))}
-                disabled={isPlaying}
-                className="w-24 px-2 py-1 border rounded-md disabled:bg-gray-100"
-              />
-            </div>
-            <div className="ml-auto">
-              <span className="font-medium">{formatRowNumber()}</span>
-            </div>
-          </div>
-          {mqttClientRef.current?.connected && (
-            <div className="mt-4 text-sm text-green-600">
-              Publishing to MQTT topics: assets/&lt;Asset_ID&gt;/&lt;Column_Name&gt;
-            </div>
-          )}
-        </div>
+        <>
+          <SimulatorControls
+            isPlaying={isPlaying}
+            currentRowIndex={currentRowIndex}
+            dataLength={data.length}
+            intervalTime={intervalTime}
+            isConnected={mqttStatus === 'Connected'}
+            onPlayToggle={togglePlay}
+            onPrevRow={prevRow}
+            onNextRow={nextRow}
+            onIntervalChange={setIntervalTime}
+          />
+
+          <DataPreviewTable
+            columns={REQUIRED_COLUMNS}
+            data={data}
+            currentRowIndex={currentRowIndex}
+            isPlaying={isPlaying}
+          />
+        </>
       )}
 
-      {/* Loading State */}
-      {isLoading ? (
+      {isLoading && (
         <div className="text-center py-4">
           <p>Loading and parsing CSV file...</p>
         </div>
-      ) : data.length > 0 && !validationError ? (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">
-            {isPlaying ? 'Currently Showing' : 'Preview'} Row {currentRowIndex + 1}
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border">
-              <thead>
-                <tr>
-                  {REQUIRED_COLUMNS.map((header) => (
-                    <th key={header} className="py-2 px-4 border-b bg-gray-50">{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="bg-blue-50">
-                  {REQUIRED_COLUMNS.map((header) => (
-                    <td key={header} className="py-2 px-4 border-b">
-                      {data[currentRowIndex]?.[header] !== undefined ? String(data[currentRowIndex][header]) : 'N/A'}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
+      )}
     </div>
   );
 }
