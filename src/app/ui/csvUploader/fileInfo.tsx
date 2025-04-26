@@ -4,7 +4,7 @@ interface FileInfoProps {
 }
 
 export function FileInfo({ file, dataLength }: FileInfoProps) {
-    if (!file) return null;
+    if (!file || dataLength == 0) return null;
 
     return (
         <div className="mb-6">
