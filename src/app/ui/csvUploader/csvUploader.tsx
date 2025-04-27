@@ -9,6 +9,7 @@ import { DataPreviewTable } from './dataPreviewTable';
 import { SimulatorControls } from './simulatorControls';
 import { useData } from '@/app/dataStore/dataContext';
 import { useMqtt } from '@/app/hooks/useMqtt';
+import WindTurbine from '../windTurbine/windTurbine';
 
 const REQUIRED_COLUMNS = [
   'Timestamp',
@@ -60,6 +61,7 @@ export default function CsvUploader() {
   const { status, publish } = useMqtt(MQTT_BROKER_URL, MQTT_OPTIONS);
   const [isDragging, setIsDragging] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentWindSpeed = data[currentRowIndex]?.['Wind_Speed'] as number || 0;
 
   // Validate CSV headers against required columns
   const validateCsvHeaders = useCallback((headers: string[]): boolean => {
@@ -186,7 +188,10 @@ export default function CsvUploader() {
       }
     };
   }, [isPlaying, intervalTime, nextRow]);
-
+  if(data.length>0){
+    console.log(Math.max(...data.map(d => Number(d["Wind_Speed"])||0))); 
+    console.log(Math.max(...data.map(d => Number(d["Power_Output"])||0))); 
+  }
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">CSV File Uploader & Simulator</h1>
@@ -201,34 +206,43 @@ export default function CsvUploader() {
         onDrop={handleDrop}
         onFileChange={handleFileChange}
       />
-
       <ValidationErrorDisplay error={validationError} />
-
-      <FileInfo file={file} dataLength={data.length} />
-
       {data.length > 0 && !validationError && (
-        <>
-          <SimulatorControls
-            isPlaying={isPlaying}
-            currentRowIndex={currentRowIndex}
-            dataLength={data.length}
-            intervalTime={intervalTime}
-            isConnected={status === 'Connected'}
-            onPlayToggle={togglePlay}
-            onPrevRow={prevRow}
-            onNextRow={nextRow}
-            onIntervalChange={setIntervalTime}
-          />
+        <div className='sm:flex sm:flex-row'>
+          <div className='mb-4 sm:mb-0 sm:mr-4 sm:w-2/3'>
+            <FileInfo file={file} dataLength={data.length} />
 
-          <DataPreviewTable
-            columns={REQUIRED_COLUMNS}
-            data={data}
-            currentRowIndex={currentRowIndex}
-            isPlaying={isPlaying}
-          />
-        </>
+              <>
+                <SimulatorControls
+                  isPlaying={isPlaying}
+                  currentRowIndex={currentRowIndex}
+                  dataLength={data.length}
+                  intervalTime={intervalTime}
+                  isConnected={status === 'Connected'}
+                  onPlayToggle={togglePlay}
+                  onPrevRow={prevRow}
+                  onNextRow={nextRow}
+                  onIntervalChange={setIntervalTime}
+                />
+
+                <DataPreviewTable
+                  columns={REQUIRED_COLUMNS}
+                  data={data}
+                  currentRowIndex={currentRowIndex}
+                  isPlaying={isPlaying}
+                />
+              </>
+          </div>
+          <div className='w-full'>
+            <WindTurbine 
+              windSpeed={Number(currentWindSpeed)} 
+              powerOutput={Number(data[currentRowIndex]?.['Power_Output'] || 0)}
+              isPlaying={isPlaying}
+
+            />
+          </div>
+        </div>
       )}
-
       {isLoading && (
         <div className="text-center py-4">
           <p>Loading and parsing CSV file...</p>
