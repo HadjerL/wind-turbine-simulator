@@ -233,7 +233,7 @@ export default function CsvUploader() {
                 />
               </>
           </div>
-          <div className='w-full'>
+          <div className='w-full mt-28 sm:mt-0'>
             <WindTurbine 
               windSpeed={Number(currentWindSpeed)} 
               powerOutput={Number(data[currentRowIndex]?.['Power_Output'] || 0)}
