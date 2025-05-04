@@ -12,6 +12,7 @@ interface DataContextType {
     data: CsvData[];
     currentRowIndex: number;
     isPlaying: boolean;
+    isPaused: boolean;
     intervalTime: number;
     validationError: string | null;
     isLoading: boolean;
@@ -19,6 +20,7 @@ interface DataContextType {
     setData: (data: CsvData[]) => void;
     setCurrentRowIndex: (value: number | ((prev: number) => number)) => void;
     setIsPlaying: (playing: boolean) => void;
+    setIsPaused: (puased: boolean) => void;
     setIntervalTime: (time: number) => void;
     setValidationError: (error: string | null) => void;
     setIsLoading: (loading: boolean) => void;
@@ -32,6 +34,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [data, setData] = useState<CsvData[]>([]);
     const [currentRowIndex, setCurrentRowIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [intervalTime, setIntervalTime] = useState(2000);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +79,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 data,
                 currentRowIndex,
                 isPlaying,
+                isPaused,
                 intervalTime,
                 validationError,
                 isLoading,
@@ -83,6 +87,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 setData,
                 setCurrentRowIndex,
                 setIsPlaying,
+                setIsPaused,
                 setIntervalTime,
                 setValidationError,
                 setIsLoading,

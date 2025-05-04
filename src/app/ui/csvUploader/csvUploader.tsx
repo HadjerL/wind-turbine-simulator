@@ -48,11 +48,13 @@ export default function CsvUploader() {
     data,
     currentRowIndex,
     isPlaying,
+    isPaused,
     intervalTime,
     validationError,
     isLoading,
     setCurrentRowIndex,
     setIsPlaying,
+    setIsPaused,
     setIntervalTime,
     setValidationError,
     processFile: contextProcessFile
@@ -85,16 +87,23 @@ export default function CsvUploader() {
   }, [contextProcessFile, validateCsvHeaders]);
 
   // Publish a row's data to MQTT topics
+  // Publish a complete row's data in one MQTT message
   const publishRowData = useCallback((row: Record<string, string | number | null>) => {
     const assetId = row['Asset_ID'] || 'unknown';
-
+    const topic = `assets/${assetId}/row`;
+    
+    // Create a simplified row object with all required columns
+    const rowData: Record<string, string | number | null> = {};
     REQUIRED_COLUMNS.forEach(column => {
-      if (column === 'Asset_ID') return;
-      
-      const topic = `assets/${assetId}/${column}`;
-      const value = row[column] !== null ? String(row[column]) : 'null';
-      publish(topic, value);
+        rowData[column] = row[column] !== null ? row[column] : null;
     });
+    
+    // Add timestamp if not present
+    if (!rowData['Timestamp']) {
+        rowData['Timestamp'] = new Date().toISOString();
+    }
+    
+    publish(topic, JSON.stringify(rowData));
   }, [publish]);
 
   // Publish data to MQTT when current row changes
@@ -136,22 +145,27 @@ export default function CsvUploader() {
     }
   };
 
-  // Handle play/pause
-  const togglePlay = () => {
-    if (isPlaying) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setIsPlaying(false);
-    } else {
+    const startSimulation = () => {
       if (data.length === 0) {
         alert('No data to simulate');
         return;
       }
       setIsPlaying(true);
+      setIsPaused(false);
       setCurrentRowIndex(0);
+  };
+
+  const togglePause = () => {
+    setIsPaused(!isPaused);
+  };
+
+  const stopSimulation = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+    setIsPlaying(false);
+    setIsPaused(false);
   };
 
   // Handle next row
@@ -175,23 +189,23 @@ export default function CsvUploader() {
 
   // Effect for interval simulation
   useEffect(() => {
-    if (isPlaying) {
-      intervalRef.current = setInterval(() => {
-        nextRow();
-      }, intervalTime);
+    if (isPlaying && !isPaused) {
+        intervalRef.current = setInterval(() => {
+            nextRow();
+        }, intervalTime);
+    } else if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
     }
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
     };
-  }, [isPlaying, intervalTime, nextRow]);
-  if(data.length>0){
-    console.log(Math.max(...data.map(d => Number(d["Wind_Speed"])||0))); 
-    console.log(Math.max(...data.map(d => Number(d["Power_Output"])||0))); 
-  }
+  }, [isPlaying, isPaused, intervalTime, nextRow]);
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">CSV File Uploader & Simulator</h1>
@@ -213,17 +227,20 @@ export default function CsvUploader() {
             <FileInfo file={file} dataLength={data.length} />
 
               <>
-                <SimulatorControls
-                  isPlaying={isPlaying}
-                  currentRowIndex={currentRowIndex}
-                  dataLength={data.length}
-                  intervalTime={intervalTime}
-                  isConnected={status === 'Connected'}
-                  onPlayToggle={togglePlay}
-                  onPrevRow={prevRow}
-                  onNextRow={nextRow}
-                  onIntervalChange={setIntervalTime}
-                />
+              <SimulatorControls
+                isPlaying={isPlaying}
+                isPaused={isPaused}
+                currentRowIndex={currentRowIndex}
+                dataLength={data.length}
+                intervalTime={intervalTime}
+                isConnected={status === 'Connected'}
+                onStart={startSimulation}
+                onPauseResume={togglePause}
+                onStop={stopSimulation}
+                onPrevRow={prevRow}
+                onNextRow={nextRow}
+                onIntervalChange={setIntervalTime}
+              />
 
                 <DataPreviewTable
                   columns={REQUIRED_COLUMNS}
@@ -238,7 +255,7 @@ export default function CsvUploader() {
               windSpeed={Number(currentWindSpeed)} 
               powerOutput={Number(data[currentRowIndex]?.['Power_Output'] || 0)}
               isPlaying={isPlaying}
-
+              isPaused={isPaused}
             />
           </div>
         </div>

@@ -6,15 +6,17 @@ interface WindTurbineProps {
     windSpeed?: number;
     powerOutput?: number;
     isPlaying?: boolean;
+    isPaused?: boolean;
 }
 
-export default function WindTurbine({ windSpeed = 0, powerOutput = 0, isPlaying = false }: WindTurbineProps) {
+export default function WindTurbine({ windSpeed = 0, powerOutput = 0, isPlaying = false, isPaused=false }: WindTurbineProps) {
+    console.log("🚀 ~ WindTurbine ~ isPaused:", isPaused)
     const turbineRef = useRef<HTMLDivElement>(null);
     const windBarRef = useRef<HTMLDivElement>(null);
     const powerBarRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!isPlaying) return;
+        if (!isPlaying || isPaused) return;
         
         // Normalize values (adjust these ranges based on your expected data)
         const windPercentage = Math.min(100, (windSpeed / 17) * 100); // Assuming max 25 m/s
@@ -35,7 +37,8 @@ export default function WindTurbine({ windSpeed = 0, powerOutput = 0, isPlaying 
             const hue = 240 - (powerPercentage * 2.4); // 240 is blue, 120 is purple
             powerBarRef.current.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
         }
-    }, [windSpeed, powerOutput, isPlaying]);
+    }, [windSpeed, powerOutput, isPlaying, isPaused]);
+        console.log("🚀 ~ useEffect ~ !isPlaying || isPaused:", !isPlaying || isPaused)
 
     useEffect(() => {
         const turbine = turbineRef.current;
@@ -44,7 +47,7 @@ export default function WindTurbine({ windSpeed = 0, powerOutput = 0, isPlaying 
         // Clear any existing animation
         turbine.style.animation = 'none';
 
-        if (isPlaying && windSpeed > 0) {
+        if (isPlaying && !isPaused && windSpeed > 0) {
             turbine.style.animation = `spin ${3}s linear infinite forwards`;
         }
 
@@ -54,7 +57,7 @@ export default function WindTurbine({ windSpeed = 0, powerOutput = 0, isPlaying 
                 turbine.style.animation = 'none';
             }
         };
-    }, [windSpeed, isPlaying]);
+    }, [windSpeed, isPlaying, isPaused]);
 
     // Add CSS animation
     useEffect(() => {
