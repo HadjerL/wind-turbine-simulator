@@ -34,7 +34,9 @@ const REQUIRED_COLUMNS = [
   'Wind_Direction_Cos'
 ];
 
-const MQTT_BROKER_URL = 'ws://test.mosquitto.org:8080/mqtt';
+const MQTT_BROKER_URL = 'ws://192.168.1.33:9001/mqtt';
+// const MQTT_BROKER_URL = 'ws://192.168.251.118:9001/mqtt';
+// const MQTT_BROKER_URL = 'ws://test.mosquitto.org:8080/mqtt';
 const MQTT_OPTIONS = {
   clientId: 'csv-simulator-' + Math.random().toString(16).substring(2, 8),
   clean: true,
